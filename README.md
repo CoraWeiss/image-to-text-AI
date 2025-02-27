@@ -3,7 +3,7 @@
 
 ## Description
 
-This project implements a Vision Transformer (ViT) classifier using TensorFlow and TensorFlow Hub. It can process images using various pre-trained ViT models and either classify images or extract features from them.
+This project implements a Vision Transformer (ViT) classifier using TensorFlow and TensorFlow Hub. It can process images using various pre-trained ViT models either classify images into single word categories ("mask" "cat" etc.)
 
 ## Features
 
