@@ -1,0 +1,139 @@
+import os
+import json
+import csv
+import argparse
+import pandas as pd
+import numpy as np
+from datetime import datetime
+
+def json_to_csv(json_file, output_file=None):
+    """Convert feature extraction JSON file to a more viewable CSV format."""
+    if not output_file:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file = f"vit_features_tabular_{timestamp}.csv"
+    
+    print(f"Converting {json_file} to CSV format...")
+    
+    # Load the JSON data
+    with open(json_file, 'r') as f:
+        data = json.load(f)
+    
+    # For feature vectors, we'll create a summary with basic stats
+    # since the full feature vectors are too large for a readable CSV
+    csv_data = []
+    
+    for image_name, content in data.items():
+        features = content.get('features', [])
+        if not features:
+            continue
+            
+        # Convert to numpy for easier calculations
+        features_array = np.array(features[0] if isinstance(features[0], list) else features)
+        
+        # Calculate summary statistics
+        row = {
+            'image': image_name,
+            'feature_dim': features_array.shape[-1] if len(features_array.shape) > 0 else 0,
+            'min_value': float(np.min(features_array)),
+            'max_value': float(np.max(features_array)),
+            'mean_value': float(np.mean(features_array)),
+            'std_value': float(np.std(features_array))
+        }
+        csv_data.append(row)
+    
+    # Write to CSV
+    with open(output_file, 'w', newline='') as csvfile:
+        fieldnames = ['image', 'feature_dim', 'min_value', 'max_value', 'mean_value', 'std_value']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(csv_data)
+    
+    print(f"Converted data saved to {output_file}")
+    return output_file
+
+def display_results(file_path):
+    """Display the contents of either a CSV or JSON file."""
+    _, ext = os.path.splitext(file_path)
+    
+    if ext.lower() == '.csv':
+        # Display CSV data
+        try:
+            df = pd.read_csv(file_path)
+            print(f"\nViewing CSV results from {file_path}:")
+            print(f"\nTotal images: {len(df)}")
+            print("\nFirst few entries:")
+            print(df.head())
+            
+            if 'confidence' in df.columns:
+                print("\nConfidence statistics:")
+                print(df['confidence'].describe())
+                
+                # Get top classes if available
+                if 'subject' in df.columns:
+                    top_classes = df['subject'].value_counts().head(10)
+                    print("\nTop 10 classes detected:")
+                    for cls, count in top_classes.items():
+                        print(f"  {cls}: {count} images")
+            
+            return df
+            
+        except Exception as e:
+            print(f"Error reading CSV file: {e}")
+            return None
+            
+    elif ext.lower() == '.json':
+        # Display JSON data
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+            
+            print(f"\nViewing JSON results from {file_path}:")
+            print(f"\nTotal images: {len(data)}")
+            
+            # Check if this is a feature extraction file
+            sample_key = next(iter(data))
+            if 'features' in data[sample_key]:
+                features = data[sample_key]['features']
+                feature_shape = np.array(features).shape
+                print(f"\nFeature vector shape: {feature_shape}")
+                print("\nSample feature statistics for first few images:")
+                
+                for i, (image, content) in enumerate(data.items()):
+                    if i >= 5:  # Just show first 5
+                        break
+                    features_array = np.array(content['features'])
+                    print(f"  {image}: min={np.min(features_array):.4f}, max={np.max(features_array):.4f}, mean={np.mean(features_array):.4f}")
+                
+                print("\nTo convert this feature file to a more readable CSV summary, use the --convert option")
+            
+            return data
+            
+        except Exception as e:
+            print(f"Error reading JSON file: {e}")
+            return None
+    
+    else:
+        print(f"Unsupported file type: {ext}")
+        return None
+
+def main():
+    parser = argparse.ArgumentParser(description='View ViT classification or feature extraction results')
+    parser.add_argument('file', help='Path to the CSV or JSON results file')
+    parser.add_argument('--convert', action='store_true', help='Convert JSON features to CSV summary')
+    parser.add_argument('--output', help='Output file path for conversion')
+    args = parser.parse_args()
+    
+    if not os.path.exists(args.file):
+        print(f"Error: File {args.file} not found")
+        return
+        
+    # Check if conversion is requested
+    if args.convert and args.file.lower().endswith('.json'):
+        csv_file = json_to_csv(args.file, args.output)
+        if csv_file:
+            display_results(csv_file)
+    else:
+        display_results(args.file)
+
+if __name__ == "__main__":
+    main()
