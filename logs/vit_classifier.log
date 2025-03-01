@@ -1,0 +1,4 @@
+2025-03-01 00:55:22,562 - INFO - VITClassifier starting at 2025-03-01 00:55:22.562496
+2025-03-01 00:55:22,562 - INFO - Logging to /workspaces/image-to-text-AI/logs/vit_classifier.log
+2025-03-01 00:55:22,563 - INFO - Current working directory: /workspaces/image-to-text-AI
+2025-03-01 00:55:22,563 - INFO - TensorFlow version: 2.18.0
